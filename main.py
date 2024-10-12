@@ -1,5 +1,26 @@
 import numpy as np
 import sounddevice as sd
+import sys
+import threading
+
+if sys.platform == 'win32':
+    import msvcrt
+else:
+    import tty
+    import termios
+
+def get_key():
+    if sys.platform == 'win32':
+        return msvcrt.getch().decode('utf-8')
+    else:
+        fd = sys.stdin.fileno()
+        old_settings = termios.tcgetattr(fd)
+        try:
+            tty.setraw(fd)
+            ch = sys.stdin.read(1)
+        finally:
+            termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+        return ch
 
 def generate_sine_wave(frequency, duration, sample_rate=44100, amplitude=1.0):
     t = np.linspace(0, duration, int(sample_rate * duration), False)
@@ -24,8 +45,8 @@ def generate_keyboard(initial_frequency):
 
 def main(keyboard, duration):
     while True:
-        key = input('Play')
-        play_wave(generate_sine_wave, frequency=keyboard[key], duration=duration)
+        key = get_key()
+        threading.Thread(target=play_wave, args=(generate_sine_wave, keyboard[key], duration)).start()
 
     return 0
 
